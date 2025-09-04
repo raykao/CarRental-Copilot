@@ -6,6 +6,7 @@ using System.Data.Common;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 
 namespace CarRental.Controllers.Shared
 {
@@ -13,24 +14,54 @@ namespace CarRental.Controllers.Shared
 
     public static class Db
     {
-        private static readonly string databaseName;
-        private static readonly string connectionString = "";
-        private static readonly string providerName;
-        private static readonly DbProviderFactory providerFactory;
+        private static string databaseName;
+        private static string connectionString;
+        private static string providerName;
+        private static DbProviderFactory providerFactory;
+        private static bool initialized = false;
+        private static readonly object lockObject = new object();
+        
+        // Static configuration for modern .NET support
+        public static IConfiguration Configuration { get; set; }
 
-        static Db()
+        private static void Initialize()
         {
-            databaseName = ConfigurationManager.AppSettings["databaseName"];
+            if (initialized) return;
+            
+            lock (lockObject)
+            {
+                if (initialized) return;
+                
+                try
+                {
+                    // Try modern configuration first
+                    if (Configuration != null)
+                    {
+                        databaseName = Configuration["AppSettings:databaseName"];
+                        connectionString = Configuration.GetConnectionString(databaseName);
+                        providerName = "System.Data.SqlClient"; // Default provider
+                    }
+                    else
+                    {
+                        // Fallback to legacy ConfigurationManager
+                        databaseName = ConfigurationManager.AppSettings["databaseName"];
+                        connectionString = ConfigurationManager.ConnectionStrings[databaseName].ConnectionString;
+                        providerName = ConfigurationManager.ConnectionStrings[databaseName].ProviderName;
+                    }
 
-            connectionString = ConfigurationManager.ConnectionStrings[databaseName].ConnectionString;
-
-            providerName = ConfigurationManager.ConnectionStrings[databaseName].ProviderName;
-
-            providerFactory = DbProviderFactories.GetFactory(providerName);
+                    providerFactory = DbProviderFactories.GetFactory(providerName);
+                    initialized = true;
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException("Failed to initialize database configuration. Make sure connection strings are properly configured.", ex);
+                }
+            }
         }
 
         public static int Insert(string sql, Dictionary<string, object> parameters)
         {
+            Initialize();
             using (IDbConnection connection = providerFactory.CreateConnection())
             {
                 connection.ConnectionString = connectionString;
@@ -52,6 +83,7 @@ namespace CarRental.Controllers.Shared
 
         public static void Update(string sql, Dictionary<string, object> parameters = null)
         {
+            Initialize();
             using (IDbConnection connection = providerFactory.CreateConnection())
             {
                 connection.ConnectionString = connectionString;
@@ -78,6 +110,7 @@ namespace CarRental.Controllers.Shared
 
         public static List<T> GetAll<T>(string sql, ConverterDelegate<T> convert, Dictionary<string, object> parameters = null)
         {
+            Initialize();
             using (IDbConnection connection = providerFactory.CreateConnection())
             {
                 connection.ConnectionString = connectionString;
@@ -110,6 +143,7 @@ namespace CarRental.Controllers.Shared
 
         public static T Get<T>(string sql, ConverterDelegate<T> convert, Dictionary<string, object> parameters)
         {
+            Initialize();
             using (IDbConnection connection = providerFactory.CreateConnection())
             {
                 connection.ConnectionString = connectionString;
@@ -139,6 +173,7 @@ namespace CarRental.Controllers.Shared
 
         public static bool Exists(string sql, Dictionary<string, object> parameters)
         {
+            Initialize();
             using (IDbConnection connection = providerFactory.CreateConnection())
             {
                 connection.ConnectionString = connectionString;
@@ -182,6 +217,7 @@ namespace CarRental.Controllers.Shared
 
         private static string AppendSelectIdentity(this string sql)
         {
+            Initialize();
             switch (providerName)
             {
                 case "System.Data.SqlClient": return sql + ";SELECT SCOPE_IDENTITY()";
