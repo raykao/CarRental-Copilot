@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,10 +14,10 @@ namespace CarRental.Domain.VehicleImageModule
     public class VehicleImage : BaseEntity
     {
         public int VehicleId { get; set; }
-        public Bitmap Image { get; set; }
+        public Image<Rgba32> Image { get; set; }
 
         public VehicleImage() { }
-        public VehicleImage(int id, int vehicleId, Bitmap image)
+        public VehicleImage(int id, int vehicleId, Image<Rgba32> image)
         {
             this.id = id;
             this.VehicleId = vehicleId;
@@ -38,7 +39,7 @@ namespace CarRental.Domain.VehicleImageModule
         {
             return obj is VehicleImage vehicleImage &&
                    EqualityComparer<int>.Default.Equals(this.VehicleId, vehicleImage.VehicleId) &&
-                   EqualityComparer<Bitmap>.Default.Equals(Image, vehicleImage.Image) &&
+                   EqualityComparer<Image<Rgba32>>.Default.Equals(Image, vehicleImage.Image) &&
                    EqualityComparer<int>.Default.Equals(Id, vehicleImage.id);
         }
 
@@ -47,7 +48,7 @@ namespace CarRental.Domain.VehicleImageModule
             int hashCode = 155997214;
             hashCode = hashCode * -1521134295 + id.GetHashCode();
             hashCode = hashCode * -1521134295 + VehicleId.GetHashCode();
-            hashCode = hashCode * -1521134295 + EqualityComparer<Bitmap>.Default.GetHashCode(Image);
+            hashCode = hashCode * -1521134295 + EqualityComparer<Image<Rgba32>>.Default.GetHashCode(Image);
             return hashCode;
         }
     }

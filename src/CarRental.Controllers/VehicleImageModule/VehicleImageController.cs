@@ -2,8 +2,9 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
-using System.Drawing;
-using System.Drawing.Imaging;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Bmp;
+using SixLabors.ImageSharp.PixelFormats;
 using System.IO;
 using CarRental.Controllers.Shared;
 using CarRental.Domain.VehicleImageModule;
@@ -110,9 +111,9 @@ namespace CarRental.Controllers.VehicleImageModule
 
         private Dictionary<string, object> GetImageParameters(VehicleImage vehicleImage)
         {
-            Bitmap bitmap = vehicleImage.Image;
+            Image<Rgba32> image = vehicleImage.Image;
             MemoryStream memory = new MemoryStream();
-            bitmap.Save(memory, ImageFormat.Bmp);
+            image.Save(memory, new BmpEncoder());
             byte[] imageBytes = memory.ToArray();
 
             var parameters = new Dictionary<string, object>();
@@ -124,14 +125,14 @@ namespace CarRental.Controllers.VehicleImageModule
             return parameters;
         }
 
-        private Bitmap ConvertToImage(IDataReader reader)
+        private Image<Rgba32> ConvertToImage(IDataReader reader)
         {
             byte[] bytes = (byte[])(reader["Image"]);
+            
+            MemoryStream stream = new MemoryStream(bytes);
+            Image<Rgba32> image = SixLabors.ImageSharp.Image.Load<Rgba32>(stream);
 
-            TypeConverter typeConverter = TypeDescriptor.GetConverter(typeof(Bitmap));
-            Bitmap bitmap = (Bitmap)typeConverter.ConvertFrom(bytes);
-
-            return bitmap;
+            return image;
         }
 
         private VehicleImage ConvertToVehicleImage(IDataReader reader)
@@ -140,9 +141,8 @@ namespace CarRental.Controllers.VehicleImageModule
             var id = Convert.ToInt32(reader["Id"]);
             var vehicleId = Convert.ToInt32(reader["VehicleId"]);
 
-            TypeConverter typeConverter = TypeDescriptor.GetConverter(typeof(Bitmap));
-            Bitmap bitmap = (Bitmap)typeConverter.ConvertFrom(byteArray);
-            Bitmap image = new Bitmap(bitmap);
+            MemoryStream stream = new MemoryStream(byteArray);
+            Image<Rgba32> image = SixLabors.ImageSharp.Image.Load<Rgba32>(stream);
 
             return new VehicleImage(id, vehicleId, image);
         }
